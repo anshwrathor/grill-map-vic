@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grill Map Victoria — BBQ Access</title>
+
+<!-- Vega -->
+<script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+
+<!-- Font (optional, but pretty) -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  /* Light theme */
+  --bg:#f6f7fb;           /* page background */
+  --surface:#ffffff;      /* cards/controls */
+  --ink:#0e1326;          /* main text */
+  --muted:#6a728c;        /* secondary text */
+  --line:#e8ecf5;         /* borders/outlines */
+  --accent:#ff7a59;       /* primary accent (peach) */
+  --accent-2:#ff9b6a;     /* lighter peach for gradients */
+  --chip-bg:rgba(18,22,40,.06);
+  --chip-fg:#2b355b;
+  --chip-bd:#e3e7f3;
+}
+/* Dark mode via OS preference; keeps your auto-dark behavior */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0c1020;
+    --surface:#141a2f;
+    --ink:#eef1ff;
+    --muted:#aeb4c9;
+    --line:#202a49;
+    --accent:#ff8b66;
+    --accent-2:#ffa77f;
+    --chip-bg:rgba(255,255,255,.05);
+    --chip-fg:#cfd6ff;
+    --chip-bd:#2a3764;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.55 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* ---- Header ---- */
+header{
+
+  /* softer, more modern gradient */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(255,255,255,.65) 50%, rgba(255,255,255,0) 100%),
+    radial-gradient(1200px 300px at 50% -80px, rgba(255,122,89,.12), transparent 60%);
+  backdrop-filter: blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.header-inner{max-width:1120px;margin:0 auto;padding:28px 20px 18px}
+h1 {
+  margin: 0;
+  font-size: 2.35rem;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: #111322;      /* solid dark navy / almost-black */
+}
+
+/* 🔧 Prototype badge — consistent peach gradient, white text */
+.badge{
+  display:inline-block;
+  margin-left:.5rem;
+  background:var(--accent);
+  color:#fff;
+  padding:4px 10px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:.8rem;
+  letter-spacing:.3px;
+}
+
+/* ---- Controls strip ---- */
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.control{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--surface); border:1px solid var(--line);
+  padding:10px 12px; border-radius:14px;
+  box-shadow:0 4px 14px rgba(15,18,32,.05);
+}
+
+.subtitle {
+  color: #444b63;          /* darker slate text */
+  opacity: 0.9;            /* softens slightly without fading too much */
+}
+.control input[type="search"], .control select{
+  border:none; outline:none; background:transparent; color:var(--ink); font:inherit;
+}
+.status{
+  background:var(--chip-bg); color:var(--chip-fg); border:1px solid var(--chip-bd);
+  border-radius:12px; padding:8px 12px; font-weight:600;
+}
+/* Reset button → peach pill */
+button.reset{
+  border:none; background:linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  color:#fff; border-radius:12px; padding:10px 14px; font-weight:700; cursor:pointer;
+  box-shadow:0 8px 22px rgba(255,122,89,.25); transition:transform .1s ease, filter .15s ease;
+}
+button.reset:hover{filter:brightness(1.05)}
+button.reset:active{transform:translateY(1px)}
+
+/* ---- Layout / Cards ---- */
+main{max-width:1120px;margin:22px auto;padding:16px;display:flex;flex-direction:column;gap:18px}
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:18px;
+  padding:20px 20px 24px; box-shadow:0 16px 40px rgba(15,18,32,.08);
+  transition:transform .2s ease, box-shadow .2s ease, background .25s ease;
+}
+.card:hover{transform:translateY(-2px); box-shadow:0 18px 46px rgba(15,18,32,.1)}
+.grid{display:grid;gap:20px}
+@media(min-width:980px){ .grid{grid-template-columns:1.15fr 1fr} }
+
+h2{margin:0 0 8px;font-size:1.15rem;font-weight:800}
+.lede{margin:0 0 10px;color:var(--muted)}
+.vis{width:100%;min-height:300px;border-radius:14px;outline:1px solid var(--line)}
+
+/* ---- KPIs ---- */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.kpi h3{margin:0;color:var(--muted);font-size:.9rem;font-weight:600}
+.kpi p{margin:6px 0 0;font-size:1.55rem;font-weight:800}
+
+/* ---- Footer ---- */
+footer{max-width:1120px;margin:16px auto 44px;padding:0 16px;color:var(--muted);text-align:center}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>Grill Map Victoria <small class="badge">Prototype</small></h1>
+    <p class="subtitle">Fairness in public BBQ access across Victorian councils</p>
+    <div class="controls">
+      <span class="control">Metric:
+        <select id="metric">
+          <option value="per10k" selected>BBQs per 10k</option>
+          <option value="bbq_count">Total BBQs</option>
+        </select>
+      </span>
+      <span class="control">Top-N:
+        <select id="topn">
+          <option value="0" selected>All</option>
+          <option value="5">Top 5</option>
+          <option value="10">Top 10</option>
+          <option value="20">Top 20</option>
+        </select>
+      </span>
+      <span class="control">Search:
+        <input id="search" type="search" placeholder="Type a council…" spellcheck="false" />
+      </span>
+      <button class="reset" id="resetBtn" title="Clear highlights">Reset</button>
+      /* <span id="status" class="status">Loading…</span>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><h3>Total BBQs</h3><p id="kpi-total">—</p></div>
+      <div class="kpi"><h3>Avg per 10k</h3><p id="kpi-per10k">—</p></div>
+      <div class="kpi"><h3>LGAs</h3><p id="kpi-lgas">—</p></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="card grid">
+    <div>
+      <h2>Where are BBQs most accessible?</h2>
+      <div id="map" class="vis" style="height:520px"></div>
+    </div>
+    <div>
+      <h2>Councils ranked by the selected metric</h2>
+      <div id="bars" class="vis" style="height:520px"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Insights (guide your story)</h2>
+    <ul class="lede" style="margin:0 0 0 18px;line-height:1.6">
+      <li>Per-capita view can flip “leaders” with many BBQs but large populations.</li>
+      <li>Average line makes it obvious which councils fall below typical access.</li>
+      <li>Top-N lets you focus the ranking; search jumps straight to a council.</li>
+    </ul>
+  </section>
+
+  <!-- 🧩 Introduction -->
+<section class="card">
+  <h2>About this Project</h2>
+  <p class="lede">
+    This visualization explores the distribution of public barbecue facilities across Victoria, Australia.
+    The goal is to understand how fairly BBQ access is distributed across different councils and communities.
+    Each circle (or bar) represents a Local Government Area (LGA), showing both the total number of BBQs and
+    the number of BBQs per 10,000 residents. This helps identify regions that might be under-resourced despite
+    large populations.
+  </p>
+</section>
+
+<!-- 🧩 Data sources -->
+<section class="card">
+  <h2>Data & Method</h2>
+  <p class="lede">
+    The data is sourced from the <a href="https://discover.data.vic.gov.au/" target="_blank">Data.Vic</a> 
+    public facilities dataset (Public Barbecues, 2023) and population data from the 
+    <a href="https://www.abs.gov.au/" target="_blank">Australian Bureau of Statistics (ABS)</a> 
+    2023 regional population estimates.
+    The “BBQs per 10k residents” metric was calculated by dividing the number of BBQs in each LGA by its population
+    (per 10,000 people). All processing was done in Excel and cleaned to ensure consistent LGA naming.
+  </p>
+</section>
+
+<!-- 🧩 Insights / Discussion -->
+<section class="card">
+  <h2>Insights & Discussion</h2>
+  <p class="lede">
+    <strong>1. Uneven access:</strong> Some large population councils, such as Melbourne and Geelong, have relatively few BBQs per capita,
+    suggesting higher demand than supply.  
+    <strong>2. Regional advantage:</strong> Many regional councils appear better served when population is normalised — small towns
+    often have more public facilities per person.  
+    <strong>3. Policy implication:</strong> Councils below the Victorian average (blue line in the bar chart)
+    could prioritise new installations in high-density parks or waterfront areas.  
+    <strong>4. Future improvement:</strong> For the final version, we plan to add interactive filters
+    (e.g., urban vs regional) and richer annotations to highlight the best and worst performing LGAs.
+  </p>
+</section>
+</main>
+
+<footer>
+  Sources (final): Public BBQ Facilities (Data.Vic) · ABS Population by LGA (2023).  
+  Built with Vega-Lite · Designed for FIT3179 Data Visualisation 2.
+</footer>
+
+<script>
+/* =======================
+   Config + Fallback data
+   ======================= */
+const CSV_PATH = "data/bbq_by_lga_demo.csv"; // change to bbq_by_lga.csv later
+const FALLBACK = [
+  {"lga":"Melbourne","lat":-37.81,"lon":144.96,"population":150000,"bbq_count":7,"per10k":0.4667},
+  {"lga":"Port Phillip","lat":-37.84,"lon":144.96,"population":114000,"bbq_count":10,"per10k":0.8772},
+  {"lga":"Geelong","lat":-38.15,"lon":144.36,"population":270000,"bbq_count":11,"per10k":0.4074},
+  {"lga":"Ballarat","lat":-37.56,"lon":143.85,"population":116000,"bbq_count":16,"per10k":1.3793},
+  {"lga":"Bendigo","lat":-36.76,"lon":144.28,"population":123000,"bbq_count":11,"per10k":0.8943},
+  {"lga":"Mornington Peninsula","lat":-38.34,"lon":145.04,"population":171000,"bbq_count":9,"per10k":0.5263}
+];
+
+/* =======================
+   Utils
+   ======================= */
+function parseCSV(txt){
+  const lines=txt.trim().split(/\r?\n/);
+  const heads=lines[0].split(",").map(h=>h.trim());
+  return lines.slice(1).map(r=>{
+    const c=r.split(",").map(x=>x.trim()); const o={};
+    heads.forEach((h,i)=>o[h]=c[i]);
+    ["lat","lon","population","bbq_count","per10k"].forEach(k=>{ if(o[k]!=null) o[k]=Number(o[k]); });
+    return o;
+  });
+}
+const sum = (arr, f=x=>x)=>arr.reduce((s,d)=>s+f(d),0);
+const mean = (arr,f=x=>x)=>arr.length?sum(arr,f)/arr.length:0;
+const fmt = n => n.toLocaleString();
+
+/* =======================
+   State
+   ======================= */
+let ALL_ROWS = [];
+let currentMetric = "per10k";
+let currentTopN = 0; // 0 = all
+let currentQuery = "";
+let picked = null; // highlighted LGA
+
+/* =======================
+   KPIs
+   ======================= */
+function updateKPIs(rows){
+  document.getElementById("kpi-total").textContent = fmt(sum(rows,d=>d.bbq_count));
+  document.getElementById("kpi-per10k").textContent = mean(rows,d=>d.per10k).toFixed(2);
+  document.getElementById("kpi-lgas").textContent = rows.length;
+}
+
+/* =======================
+   Specs (map + bars)
+   ======================= */
+const baseCountry = {
+  "data":{"url":"https://cdn.jsdelivr.net/npm/vega-datasets@2.6.0/data/world-110m.json",
+          "format":{"type":"topojson","feature":"countries"}},
+  "transform":[{"filter":"datum.id==36"}]
+};
+
+function derive(values){
+  // Rank by current metric; add helpers
+  const sorted = [...values].sort((a,b)=>(b[currentMetric]??0)-(a[currentMetric]??0));
+  const rankMap = new Map(sorted.map((d,i)=>[d.lga, i+1]));
+  return values.map(d=>({
+    ...d,
+    rk: rankMap.get(d.lga) || values.length+1,
+    inTop: currentTopN>0 ? (rankMap.get(d.lga)<=currentTopN) : true,
+    match: currentQuery ? d.lga.toLowerCase().includes(currentQuery.toLowerCase()) : false,
+    picked: picked && d.lga===picked
+  }));
+}
+
+function mapSpec(values){
+  // Make a clean array sorted by the currently selected metric
+  let arr = values.map(d => ({...d, metricValue: Number(d[currentMetric] || 0)}))
+                  .sort((a,b) => (b.metricValue - a.metricValue));
+  if (currentTopN > 0) arr = arr.slice(0, currentTopN);
+
+  return {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "width": "container",
+    "height": 460,
+    "padding": 10,
+    "data": { "values": arr },
+    "layer": [
+      { // the "stick"
+        "mark": {"type":"rule", "stroke":"#c7cfdf", "strokeWidth":2},
+        "encoding": {
+          "y": {"field":"lga","type":"nominal","sort":{"field":"metricValue","order":"descending"}, "title":null, "axis":{"labelLimit":160}},
+          "x": {"value": 0},
+          "x2": {"field":"metricValue","type":"quantitative"}
+        }
+      },
+      { // the "lollipop head"
+        "mark": {"type":"point", "filled": true, "size": 140, "stroke":"#0e1326", "strokeWidth":0.6},
+        "encoding": {
+          "y": {"field":"lga","type":"nominal","sort":{"field":"metricValue","order":"descending"}},
+          "x": {"field":"metricValue","type":"quantitative",
+                "title": currentMetric === "per10k" ? "BBQs per 10,000 residents" : "Total BBQs",
+                "axis":{"grid": true, "tickCount": 5}},
+          "color": {"value":"#3aa6b9"}  // calm, readable
+        }
+      },
+      { // value labels at the end
+        "mark": {"type":"text","align":"left","dx":6,"fontSize":11,"fontWeight":700,"color":"#0e1326"},
+        "encoding": {
+          "y": {"field":"lga","type":"nominal","sort":{"field":"metricValue","order":"descending"}},
+          "x": {"field":"metricValue","type":"quantitative"},
+          "text": {"field":"metricValue","type":"quantitative", "format": currentMetric === "per10k" ? ".2f" : ",d"}
+        }
+      }
+    ],
+    "config": { "view": {"stroke": "#dde3f1", "cornerRadius": 14} }
+  };
+}
+
+function barsSpec(values){
+  // Always show TOTAL BBQs here for a clear second view
+  let arr = values.map(d => ({...d, totalBBQ: Number(d.bbq_count || 0)}))
+                  .sort((a,b) => (b.totalBBQ - a.totalBBQ));
+  if (currentTopN > 0) arr = arr.slice(0, currentTopN);
+
+  return {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "width": "container",
+    "height": 460,
+    "padding": 10,
+    "data": { "values": arr },
+    "mark": {"type":"bar", "cornerRadiusEnd": 8},
+    "encoding": {
+      "y": {"field":"lga","type":"nominal","sort":{"field":"totalBBQ","order":"descending"}, "title": null, "axis":{"labelLimit":160}},
+      "x": {"field":"totalBBQ","type":"quantitative", "title":"Total BBQs", "axis":{"grid":true, "tickCount":5}},
+      "color": {"value":"#ff7a59"}  // consistent accent
+    },
+    "layer": [
+      { "mark": {"type":"bar", "cornerRadiusEnd": 8} },
+      { // numeric labels
+        "mark": {"type":"text","align":"left","dx":6,"fontSize":11,"fontWeight":700,"color":"#0e1326"},
+        "encoding": {
+          "y": {"field":"lga","type":"nominal","sort":{"field":"totalBBQ","order":"descending"}},
+          "x": {"field":"totalBBQ","type":"quantitative"},
+          "text": {"field":"totalBBQ","type":"quantitative", "format": ",d"}
+        }
+      }
+    ],
+    "config": { "view": {"stroke": "#dde3f1", "cornerRadius": 14} }
+  };
+}
+
+/* =======================
+   Render pipeline
+   ======================= */
+function renderAll(rows){
+  updateKPIs(rows);
+  vegaEmbed("#map",  mapSpec(rows),  {actions:false}).then(r=>{
+    // capture picks from clicks
+    r.view.addSignalListener('pickCouncil', (name, value)=>{
+      picked = value && value.values && value.values[0] ? value.values[0] : null;
+      // re-render bars to reflect picked state immediately
+      vegaEmbed("#bars", barsSpec(ALL_ROWS), {actions:false});
+    });
+  });
+  vegaEmbed("#bars", barsSpec(rows), {actions:false});
+}
+
+/* =======================
+   Controls (UI)
+   ======================= */
+const metricSel = document.getElementById("metric");
+const topnSel   = document.getElementById("topn");
+const searchInp = document.getElementById("search");
+const resetBtn  = document.getElementById("resetBtn");
+const statusEl  = document.getElementById("status");
+
+metricSel.addEventListener("change", ()=>{
+  currentMetric = metricSel.value;
+  renderAll(ALL_ROWS);
+});
+topnSel.addEventListener("change", ()=>{
+  currentTopN = Number(topnSel.value);
+  renderAll(ALL_ROWS);
+});
+// debounce search for smooth typing
+let t=null;
+searchInp.addEventListener("input", ()=>{
+  clearTimeout(t);
+  t = setTimeout(()=>{
+    currentQuery = searchInp.value.trim();
+    // also set "picked" when exact match typed
+    const exact = ALL_ROWS.find(d=>d.lga.toLowerCase()===currentQuery.toLowerCase());
+    picked = exact ? exact.lga : null;
+    renderAll(ALL_ROWS);
+  }, 140);
+});
+resetBtn.addEventListener("click", ()=>{
+  picked = null; currentQuery=""; searchInp.value="";
+  renderAll(ALL_ROWS);
+});
+
+/* =======================
+   Data load + init
+   ======================= */
+async function init(){
+  try{
+    // If opened via double-click, use fallback and tell user why
+    if (location.protocol === "file:") {
+      statusEl.textContent = "Opened via file:// — using demo data. Start a local server to load CSV.";
+      ALL_ROWS = FALLBACK;
+      renderAll(ALL_ROWS);
+      return;
+    }
+    const r = await fetch(CSV_PATH, {cache:"no-store"});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const txt = await r.text();
+    const rows = parseCSV(txt);
+    if(!rows.length) throw new Error("CSV empty");
+    statusEl.textContent = `Loaded: ${CSV_PATH} (${rows.length} rows)`;
+    ALL_ROWS = rows;
+    renderAll(ALL_ROWS);
+  }catch(e){
+    console.warn("CSV load failed, using demo:", e);
+    statusEl.textContent = `Using demo data (couldn't load ${CSV_PATH})`;
+    ALL_ROWS = FALLBACK;
+    renderAll(ALL_ROWS);
+  }
+}
+init();
+</script>
+</body>
+</html>
